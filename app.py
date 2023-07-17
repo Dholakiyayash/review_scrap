@@ -3,16 +3,20 @@ from flask_cors import CORS,cross_origin
 import requests
 from bs4 import BeautifulSoup as bs
 from urllib.request import urlopen as uReq
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
 import logging
 logging.basicConfig(filename="scrapper.log" , level=logging.INFO)
 
 app = Flask(__name__)
 
 @app.route("/", methods = ['GET'])
+@cross_origin()
 def homepage():
     return render_template("index.html")
 
 @app.route("/review" , methods = ['POST' , 'GET'])
+@cross_origin()
 def index():
     if request.method == 'POST':
         try:
@@ -71,6 +75,21 @@ def index():
                 mydict = {"Product": searchString, "Name": name, "Rating": rating, "CommentHead": commentHead,
                           "Comment": custComment}
                 reviews.append(mydict)
+
+            uri = "mongodb+srv://yash:Yash2003@atlascluster.shpxjpc.mongodb.net/?retryWrites=true&w=majority"
+            # Create a new client and connect to the server
+            client = MongoClient(uri, server_api=ServerApi('1'))
+            # Send a ping to confirm a successful connection
+            try:
+                client.admin.command('ping')
+                print("Pinged your deployment. You successfully connected to MongoDB!")
+            except Exception as e:
+                print(e)
+
+            db=client['review_scrap']
+            review_col=db['review_scrap_data']
+            review_col.insert_many(reviews)
+
             logging.info("log my final result {}".format(reviews))
             return render_template('result.html', reviews=reviews[0:(len(reviews)-1)])
         except Exception as e:
@@ -83,4 +102,4 @@ def index():
 
 
 if __name__=="__main__":
-    app.run(host="0.0.0.0")
+    app.run(host="0.0.0.0",port=8000,debug=True)
